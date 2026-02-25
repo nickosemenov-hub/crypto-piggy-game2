@@ -1,48 +1,45 @@
-import { useNavigate } from 'react-router-dom';
-import { hideBackButton, onBackButtonClick, showBackButton, postEvent } from '@telegram-apps/sdk-react';
-import { type PropsWithChildren, useEffect, useRef } from 'react';
+import { ReactNode, useEffect } from 'react';
 
-// Стили для учета отступов safe area с дополнительным отступом для fullscreen режима
-const safeAreaStyle = {
-  paddingTop: 'calc(var(--safe-area-top, 0px) + var(--fullscreen-extra-padding, 0px))',
-  paddingRight: 'var(--safe-area-right, 0px)',
-  paddingBottom: 'var(--safe-area-bottom, 0px)',
-  paddingLeft: 'var(--safe-area-left, 0px)',
-  flex: 1,
-  display: 'flex',
-  flexDirection: 'column' as const,
-  width: '100%',
-  boxSizing: 'border-box' as const,
-};
+interface PageProps {
+  children: ReactNode;
+  back?: boolean;
+}
 
-export function Page({ children, back = true }: PropsWithChildren<{
-  /**
-   * True if it is allowed to go back from this page.
-   */
-  back?: boolean
-}>) {
-  const navigate = useNavigate();
-  const containerRef = useRef<HTMLDivElement>(null);
-
+export const Page = ({ children, back = true }: PageProps) => {
   useEffect(() => {
-    if (back) {
-      showBackButton();
-      return onBackButtonClick(() => {
-        navigate(-1);
-      });
+    const tg = (window as any).Telegram?.WebApp;
+    if (tg) {
+      tg.ready();
+      tg.expand();
+      if (back) {
+        tg.BackButton.show();
+        tg.BackButton.onClick(() => window.history.back());
+      } else {
+        tg.BackButton.hide();
+      }
     }
-    hideBackButton();
-  }, [back, navigate]);
-
-  // Повторно запрашиваем safe area при монтировании страницы
-  useEffect(() => {
-    postEvent('web_app_request_safe_area');
-    postEvent('web_app_request_viewport');
-  }, []);
+  }, [back]);
 
   return (
-    <div className="page-container" style={safeAreaStyle} ref={containerRef}>
+    <div style={{
+      background: 'var(--tg-theme-bg-color)',
+      color: 'var(--tg-theme-text-color)',
+      minHeight: '100vh',
+      width: '100%',
+      animation: 'fadeIn 0.3s ease',
+      position: 'relative'
+    }}>
       {children}
     </div>
   );
-}
+};
+
+// Добавляем стили для анимации
+const style = document.createElement('style');
+style.textContent = `
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+`;
+document.head.appendChild(style);
